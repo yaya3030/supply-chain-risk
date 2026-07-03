@@ -36,29 +36,78 @@ class SupplyChainApiController extends Controller
     }
 
     /**
-     * GET /api/risk
-     * Mengambil data skor risiko yang terhubung dengan negara.
-     */
+ * GET /api/risk
+ * Menghitung tingkat risiko rantai pasok global secara dinamis menggunakan Weighted Risk Model.
+ */
     public function getRiskScores()
     {
         try {
-            // Mengambil data skor risiko beserta informasi negaranya
-            $risks = RiskScore::with('country')->get();
+            // 1. Ambil semua data skor komponen dasar dari database beserta informasi negaranya
+            $baseRisks = RiskScore::with('country')->get();
+            $calculatedRisks = [];
+
+            foreach ($baseRisks as $risk) {
+                // 2. Terapkan Algoritma Weighted Risk Model sesuai Dokumen Spesifikasi (Halaman 8)
+                $weatherWeight   = $risk->weather_risk * 0.30;   // Bobot Cuaca 30%
+                $inflationWeight = $risk->inflation_risk * 0.20; // Bobot Inflasi 20%
+                $newsWeight      = $risk->news_risk * 0.40;      // Bobot Sentimen Berita 40%
+                $currencyWeight  = $risk->currency_risk * 0.10;  // Bobot Fluktuasi Kurs 10%
+
+                // Hitung Total Skor Risiko Akhir
+                $totalRiskScore = round($weatherWeight + $inflationWeight + $newsWeight + $currencyWeight, 2);
+
+                // 3. Tentukan Status Klasifikasi Tingkat Risiko (Halaman 4)
+                if ($totalRiskScore <= 35) {
+                    $status = 'Low Risk';
+                    $badge_color = 'success';
+                } elseif ($totalRiskScore <= 65) {
+                    $status = 'Medium Risk';
+                    $badge_color = 'warning';
+                } else {
+                    $status = 'High Risk';
+                    $badge_color = 'danger';
+                }
+
+                // Simpan hasil kalkulasi ke dalam array output
+                $calculatedRisks[] = [
+                    'id' => $risk->id,
+                    'country' => [
+                        'name' => $risk->country->name,
+                        'iso_code' => $risk->country->iso_code,
+                        'region' => $risk->country->region,
+                    ],
+                    'risk_components' => [
+                        'weather_risk' => $risk->weather_risk,
+                        'inflation_risk' => $risk->inflation_risk,
+                        'news_risk' => $risk->news_risk,
+                        'currency_risk' => $risk->currency_risk,
+                    ],
+                    'calculation_breakdown' => [
+                        'weather_contribution (30%)' => $weatherWeight,
+                        'inflation_contribution (20%)' => $inflationWeight,
+                        'news_contribution (40%)' => $newsWeight,
+                        'currency_contribution (10%)' => $currencyWeight,
+                    ],
+                    'total_risk_score' => $totalRiskScore,
+                    'risk_status' => $status,
+                    'ui_badge' => $badge_color
+                ];
+            }
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Data skor risiko berhasil diambil',
-                'data' => $risks
+                'message' => 'Analisis prediksi risiko rantai pasok berhasil dihitung',
+                'algorithm_used' => 'Weighted Risk Model (Simple Scoring Algorithm)',
+                'data' => $calculatedRisks
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Gagal mengambil data risiko: ' . $e->getMessage()
+                'message' => 'Gagal menghitung prediksi risiko: ' . $e->getMessage()
             ], 500);
         }
     }
-
     public function getNews()
     {
         try {
