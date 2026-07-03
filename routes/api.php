@@ -8,3 +8,6 @@ Route::get('/countries', [SupplyChainApiController::class, 'getCountries']);
 
 // Route untuk mengambil data skor risiko
 Route::get('/risk', [SupplyChainApiController::class, 'getRiskScores']);
+
+// Route untuk mengambil berita hasil analisis sentimen
+Route::get('/news', [SupplyChainApiController::class, 'getNews']);
