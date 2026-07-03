@@ -3,14 +3,14 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Country;
-use App\Models\RiskScore;
+use App\Models\Country; // <-- PASTIKAN BARIS INI ADA
+use App\Models\RiskScore; // <-- PASTIKAN BARIS INI ADA
 
 class CountrySeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Data Dummy Negara sesuai Studi Kasus 
+        // 1. Data Dummy Negara sesuai Studi Kasus
         $countries = [
             [
                 'name' => 'Germany', 'iso_code' => 'DEU', 'currency' => 'Euro', 
@@ -37,14 +37,14 @@ class CountrySeeder extends Seeder
         foreach ($countries as $data) {
             $country = Country::create($data);
 
-            // 2. Berikan Nilai Risk Score Awal untuk masing-masing negara [cite: 112, 113]
+            // 2. Berikan Nilai Risk Score Awal untuk masing-masing negara
             RiskScore::create([
                 'country_id' => $country->id,
                 'weather_risk' => rand(10, 40),
                 'inflation_risk' => rand(10, 50),
                 'currency_risk' => rand(5, 30),
                 'news_risk' => rand(10, 60),
-                'total_risk_score' => rand(20, 65) // Sesuai range Low - Medium Risk [cite: 112, 113]
+                'total_risk_score' => rand(20, 65)
             ]);
         }
     }
