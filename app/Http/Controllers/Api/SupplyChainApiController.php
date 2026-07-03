@@ -8,6 +8,7 @@ use App\Models\RiskScore;
 use App\Models\PositiveWord;
 use App\Models\NegativeWord;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class SupplyChainApiController extends Controller
 {
@@ -133,6 +134,57 @@ class SupplyChainApiController extends Controller
                 'status' => 'error',
                 'message' => 'Gagal menganalisis berita: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+ * GET /api/currency
+ * Mengambil data kurs mata uang real-time terhadap USD & menyediakan data tren grafik.
+ */
+    public function getCurrency(Request $request)
+    {
+        try {
+            // 1. Ambil data kurs real-time menggunakan HTTP Client Laravel (Tanpa API Key)
+            $response = Http::get('https://open.er-api.com/v6/latest/USD');
+
+            if ($response->successful()) {
+                $allRates = $response->json()['rates'];
+
+                // 2. Filter mata uang khusus untuk negara yang ada di studi kasus kita
+                // USD (Base), IDR (Indonesia), EUR (Jerman), CNY (China), AUD (Australia)
+                $supportedCurrencies = ['USD', 'IDR', 'EUR', 'CNY', 'AUD'];
+                $filteredRates = array_intersect_key($allRates, array_flip($supportedCurrencies));
+
+                // 3. Menyediakan simulasi array data tren historis perubahan kurs 7 hari terakhir
+                // Ini sangat krusial untuk mempermudah visualisasi komponen Chart.js nanti
+                $trends = [
+                    'IDR' => [16200, 16250, 16310, 16280, 16350, 16410, round($filteredRates['IDR'], 2)],
+                    'EUR' => [0.91, 0.92, 0.91, 0.93, 0.92, 0.92, round($filteredRates['EUR'], 4)],
+                    'CNY' => [7.21, 7.23, 7.22, 7.25, 7.24, 7.26, round($filteredRates['CNY'], 4)],
+                    'AUD' => [1.48, 1.49, 1.51, 1.50, 1.52, 1.51, round($filteredRates['AUD'], 4)],
+                ];
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Data kurs mata uang real-time berhasil diperbarui',
+                    'base_currency' => 'USD',
+                    'exchange_rates' => $filteredRates,
+                    'chart_trends' => $trends
+                ], 200);
+            }
+
+            throw new \Exception("Gagal terhubung dengan layanan ExchangeRate API.");
+
+        } catch (\Exception $e) {
+            // Fallback aman: Jika laptop tidak tersambung internet, API tidak akan crash
+            $fallbackRates = ['USD' => 1, 'IDR' => 16450, 'EUR' => 0.93, 'CNY' => 7.27, 'AUD' => 1.53];
+            
+            return response()->json([
+                'status' => 'warning',
+                'message' => 'Menggunakan cadangan data lokal (API Offline): ' . $e->getMessage(),
+                'base_currency' => 'USD',
+                'exchange_rates' => $fallbackRates
+            ], 200);
         }
     }
 }

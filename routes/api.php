@@ -11,3 +11,6 @@ Route::get('/risk', [SupplyChainApiController::class, 'getRiskScores']);
 
 // Route untuk mengambil berita hasil analisis sentimen
 Route::get('/news', [SupplyChainApiController::class, 'getNews']);
+
+// Route untuk mengambil data integrasi kurs mata uang real-time
+Route::get('/currency', [SupplyChainApiController::class, 'getCurrency']);
